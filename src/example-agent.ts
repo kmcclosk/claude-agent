@@ -40,7 +40,7 @@ async function analyzeCodebase(directory: string = './src'): Promise<string> {
     3. Code quality assessment
     4. Potential improvements`,
     options: {
-      allowedTools: ['Glob', 'Grep', 'FileRead'],
+      allowedTools: ['Glob', 'Grep', 'Read'],
       maxTurns: 10
     }
   });
@@ -81,25 +81,25 @@ async function developmentAssistant(): Promise<void> {
   const agents: Record<string, AgentDefinition> = {
     'test-runner': {
       description: 'Runs and analyzes test results',
-      tools: ['Bash', 'FileRead'],
+      tools: ['Bash', 'Read'],
       prompt: 'Run tests and provide detailed analysis of results',
       model: 'sonnet'
     },
     'linter': {
       description: 'Checks code style and quality',
-      tools: ['Bash', 'FileRead', 'Grep'],
+      tools: ['Bash', 'Read', 'Grep'],
       prompt: 'Run linters and explain issues found',
       model: 'haiku'
     },
     'builder': {
       description: 'Builds the project',
-      tools: ['Bash', 'FileRead'],
+      tools: ['Bash', 'Read'],
       prompt: 'Build the project and handle any errors',
       model: 'sonnet'
     },
     'fixer': {
       description: 'Auto-fixes code issues',
-      tools: ['FileRead', 'FileEdit', 'Bash'],
+      tools: ['Read', 'Edit', 'Bash'],
       prompt: 'Identify and fix code issues automatically',
       model: 'opus'
     }
@@ -130,7 +130,7 @@ async function refactorWithHooks(targetFile: string): Promise<ToolUse[]> {
     3. Optimize performance
     4. Add comprehensive comments`,
     options: {
-      allowedTools: ['FileRead', 'FileEdit', 'Bash'],
+      allowedTools: ['Read', 'Edit', 'Bash'],
       hooks: {
         PreToolUse: [{
           hooks: [async (input: HookInput, toolUseId: string | undefined, { signal }): Promise<HookJSONOutput> => {
@@ -142,7 +142,7 @@ async function refactorWithHooks(targetFile: string): Promise<ToolUse[]> {
         }],
         PostToolUse: [{
           hooks: [async (input: HookInput, toolUseId: string | undefined, { signal }): Promise<HookJSONOutput> => {
-            if (input.hook_event_name === 'PostToolUse' && input.tool_name === 'FileEdit') {
+            if (input.hook_event_name === 'PostToolUse' && input.tool_name === 'Edit') {
               const toolInput = input.tool_input as { file_path?: string };
               console.log(`  ✏️  File modified: ${toolInput?.file_path}`);
             }
@@ -158,7 +158,7 @@ async function refactorWithHooks(targetFile: string): Promise<ToolUse[]> {
     if (message.type === 'assistant') {
       const assistantMsg = message as SDKAssistantMessage;
       const edits = assistantMsg.message.content.filter(
-        (c): c is ToolUse => c.type === 'tool_use' && 'name' in c && c.name === 'FileEdit'
+        (c): c is ToolUse => c.type === 'tool_use' && 'name' in c && c.name === 'Edit'
       );
       changes.push(...edits);
     }

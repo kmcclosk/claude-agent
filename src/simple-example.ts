@@ -17,7 +17,7 @@ async function main(): Promise<void> {
     prompt: "Create a simple TODO list application in JavaScript with add, remove, and list functions",
     options: {
       // Limit which tools the agent can use
-      allowedTools: ['FileWrite', 'FileRead'],
+      allowedTools: ['Write', 'Read'],
 
       // Set maximum conversation turns
       maxTurns: 5,
@@ -80,7 +80,7 @@ function handleAssistantMessage(message: SDKAssistantMessage): void {
   for (const tool of toolUses) {
     if ('name' in tool) {
       console.log(`🔧 Using tool: ${tool.name}`);
-      if (tool.name === 'FileWrite' && 'input' in tool && tool.input) {
+      if (tool.name === 'Write' && 'input' in tool && tool.input) {
         const input = tool.input as { file_path?: string };
         if (input.file_path) {
           console.log(`   Creating file: ${input.file_path}`);
