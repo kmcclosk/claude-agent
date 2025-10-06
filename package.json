@@ -15,7 +15,11 @@
     "example:dev": "tsx src/example-agent.ts dev",
     "example:refactor": "tsx src/example-agent.ts refactor",
     "example:background": "tsx src/example-agent.ts background",
-    "example:secure": "tsx src/example-agent.ts secure"
+    "example:secure": "tsx src/example-agent.ts secure",
+    "demo:a2a": "tsx src/demo-multi-agent.ts",
+    "agent:coordinator": "tsx src/agents/coordinator.ts",
+    "agent:research": "tsx src/agents/specialists/research-agent.ts",
+    "registry": "tsx src/server/registry.ts"
   },
   "keywords": [
     "ai",
@@ -29,10 +33,16 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.8"
+    "@a2a-js/sdk": "^0.3.4",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.8",
+    "express": "^5.1.0",
+    "jsonrpc-lite": "^2.2.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/node": "^20.10.0",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.6.0",
     "typescript": "^5.3.0"
   },
