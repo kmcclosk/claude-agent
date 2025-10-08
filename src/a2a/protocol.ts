@@ -7,7 +7,6 @@ import {
   A2ATask,
   A2AMessage,
   A2AMethods,
-  A2AErrorCodes,
   A2AAgentCard,
 } from './types.js';
 
@@ -102,7 +101,7 @@ export class A2AProtocol extends EventEmitter {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as A2AResponse;
       this.handleResponse(result);
 
       return await requestPromise;
@@ -241,29 +240,30 @@ export class A2AClient extends A2AProtocol {
       throw new Error(`Failed to fetch agent card: ${response.status}`);
     }
 
-    this.agentCard = await response.json();
+    const card = await response.json() as A2AAgentCard;
+    this.agentCard = card;
     this.emit('connected', this.agentCard);
-    return this.agentCard;
+    return card;
   }
 
   /**
-   * Create a new task on the remote agent
+   * Send a message to create a new task (per specification)
    */
-  public async createTask(message: A2AMessage, metadata?: any): Promise<A2ATask> {
+  public async sendMessage(message: A2AMessage, metadata?: any): Promise<A2ATask> {
     return this.sendHTTPRequest(
       `${this.agentUrl}/rpc`,
-      A2AMethods.TASK_CREATE,
+      A2AMethods.MESSAGE_SEND,
       { message, metadata }
     );
   }
 
   /**
-   * Get task status
+   * Get task status (per specification)
    */
   public async getTask(taskId: string): Promise<A2ATask> {
     return this.sendHTTPRequest(
       `${this.agentUrl}/rpc`,
-      A2AMethods.TASK_GET,
+      A2AMethods.TASKS_GET,
       { id: taskId }
     );
   }
@@ -274,9 +274,17 @@ export class A2AClient extends A2AProtocol {
   public async updateTask(taskId: string, message?: A2AMessage, metadata?: any): Promise<A2ATask> {
     return this.sendHTTPRequest(
       `${this.agentUrl}/rpc`,
-      A2AMethods.TASK_UPDATE,
+      A2AMethods.TASKS_UPDATE,
       { id: taskId, updates: { message, metadata } }
     );
+  }
+
+  /**
+   * Legacy method for backward compatibility - redirects to sendMessage
+   * @deprecated Use sendMessage instead
+   */
+  public async createTask(message: A2AMessage, metadata?: any): Promise<A2ATask> {
+    return this.sendMessage(message, metadata);
   }
 
   /**

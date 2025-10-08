@@ -183,7 +183,7 @@ class InteractiveAgent {
       this.log(`Permission check: ${toolName}`);
 
       // Check global permission state
-      if (toolName === 'FileWrite' && !this.permissionState.allowWrites) {
+      if (toolName === 'Write' && !this.permissionState.allowWrites) {
         return {
           behavior: 'deny',
           message: 'File writes are currently disabled',
@@ -201,7 +201,7 @@ class InteractiveAgent {
 
       // Interactive confirmation for destructive operations
       if (this.permissionState.requireConfirmation) {
-        const destructiveTools = ['FileWrite', 'FileEdit', 'Bash'];
+        const destructiveTools = ['Write', 'Edit', 'Bash'];
 
         if (destructiveTools.includes(toolName)) {
           console.log(`\n⚠️  Agent wants to use: ${toolName}`);
@@ -250,7 +250,7 @@ class InteractiveAgent {
           }
 
           // Example: Inject additional context
-          if (input.tool_name === 'FileRead') {
+          if (input.tool_name === 'Read') {
             return {
               continue: true,
               systemMessage: 'Pay attention to error handling patterns'
@@ -642,7 +642,7 @@ async function interactiveCLI(): Promise<void> {
   console.log('  /help          - Show this help\n');
 
   const agent = new InteractiveAgent({
-    initialPrompt: "Hello! I'm your interactive assistant. How can I help?",
+    initialPrompt: "Hello! I would like to learn about history, can you help?", // I'm your interactive assistant. How can I help?",
     requireConfirmation: false
   });
 

@@ -26,44 +26,58 @@ export interface A2AAgentCard {
 }
 
 /**
- * A2A Message Part - Content container
+ * A2A Message Part - Content container (per specification)
  */
 export interface A2APart {
-  type: 'text' | 'file' | 'data' | 'artifact';
-  content?: string;
-  mimeType?: string;
-  encoding?: 'base64' | 'utf-8';
-  metadata?: Record<string, any>;
+  kind: 'text' | 'file' | 'data' | 'artifact';  // Changed from 'type' to 'kind' per spec
+  // Text part
+  text?: string;  // For text kind
+  // File part
   file?: {
     name: string;
+    mimeType?: string;
+    content?: string;  // Base64 encoded
     path?: string;
     size?: number;
   };
-  data?: Record<string, any>;
+  // Data part
+  data?: Record<string, any>;  // For structured JSON data
+  // Artifact part
   artifact?: {
     id: string;
     type: string;
     title: string;
     content: any;
   };
-}
-
-/**
- * A2A Message - Communication turn
- */
-export interface A2AMessage {
-  role: 'user' | 'assistant' | 'system';
-  parts: A2APart[];
-  timestamp: string;
   metadata?: Record<string, any>;
 }
 
 /**
- * A2A Task - Stateful unit of work
+ * A2A Message - Communication turn (per specification)
+ */
+export interface A2AMessage {
+  role: 'user' | 'assistant' | 'system';
+  parts: A2APart[];
+  messageId: string;  // Added per specification
+  timestamp?: string;  // Made optional
+  metadata?: Record<string, any>;
+}
+
+/**
+ * A2A Task Status (per specification)
+ */
+export interface A2ATaskStatus {
+  state: 'submitted' | 'working' | 'input-required' | 'completed' | 'failed' | 'cancelled' | 'rejected';
+  message?: string;
+}
+
+/**
+ * A2A Task - Stateful unit of work (per specification)
  */
 export interface A2ATask {
   id: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  contextId: string;  // Added per specification for context management
+  status: A2ATaskStatus;  // Changed to object per specification
   messages: A2AMessage[];
   artifacts?: any[];
   createdAt: string;
@@ -123,29 +137,28 @@ export interface TaskDelegationRequest {
 }
 
 /**
- * A2A Methods - Standard RPC method names
+ * A2A Methods - Standard RPC method names (per specification)
  */
 export enum A2AMethods {
+  // Message Management
+  MESSAGE_SEND = 'message/send',
+  MESSAGE_STREAM = 'message/stream',
+
   // Task Management
-  TASK_CREATE = 'task.create',
-  TASK_GET = 'task.get',
-  TASK_UPDATE = 'task.update',
-  TASK_CANCEL = 'task.cancel',
-  TASK_LIST = 'task.list',
+  TASKS_GET = 'tasks/get',
+  TASKS_UPDATE = 'tasks/update',
+  TASKS_CANCEL = 'tasks/cancel',
+  TASKS_LIST = 'tasks/list',
 
   // Agent Discovery
-  AGENT_CAPABILITIES = 'agent.capabilities',
-  AGENT_STATUS = 'agent.status',
-  AGENT_PING = 'agent.ping',
-
-  // Communication
-  MESSAGE_SEND = 'message.send',
-  MESSAGE_STREAM = 'message.stream',
+  AGENT_CAPABILITIES = 'agent/capabilities',
+  AGENT_STATUS = 'agent/status',
+  AGENT_PING = 'agent/ping',
 
   // Artifacts
-  ARTIFACT_CREATE = 'artifact.create',
-  ARTIFACT_GET = 'artifact.get',
-  ARTIFACT_LIST = 'artifact.list',
+  ARTIFACTS_CREATE = 'artifacts/create',
+  ARTIFACTS_GET = 'artifacts/get',
+  ARTIFACTS_LIST = 'artifacts/list',
 }
 
 /**

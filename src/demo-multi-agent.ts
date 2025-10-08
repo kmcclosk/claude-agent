@@ -108,16 +108,17 @@ async function demonstrateA2ACommunication(): Promise<void> {
 
   const researchMessage: A2AMessage = {
     role: 'user',
+    messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     parts: [
       {
-        type: 'text',
-        content: 'Research the A2A protocol and its key features',
+        kind: 'text',
+        text: 'Research the A2A protocol and its key features',
       },
     ],
     timestamp: new Date().toISOString(),
   };
 
-  const task1 = await client.createTask(researchMessage);
+  const task1 = await client.sendMessage(researchMessage);
   console.log(`Task created: ${task1.id}`);
 
   // Wait for completion
@@ -129,16 +130,17 @@ async function demonstrateA2ACommunication(): Promise<void> {
 
   const complexMessage: A2AMessage = {
     role: 'user',
+    messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     parts: [
       {
-        type: 'text',
-        content: 'Research best practices for HTTP servers and create an implementation plan for an A2A-compatible server',
+        kind: 'text',
+        text: 'Research best practices for HTTP servers and create an implementation plan for an A2A-compatible server',
       },
     ],
     timestamp: new Date().toISOString(),
   };
 
-  const task2 = await client.createTask(complexMessage);
+  const task2 = await client.sendMessage(complexMessage);
   console.log(`Complex task created: ${task2.id}`);
 
   // Wait for completion
@@ -150,16 +152,17 @@ async function demonstrateA2ACommunication(): Promise<void> {
   const researchClient = new A2AClient(`http://localhost:${RESEARCH_PORT}`);
   const directMessage: A2AMessage = {
     role: 'user',
+    messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     parts: [
       {
-        type: 'text',
-        content: 'What are the main components of a microservices architecture?',
+        kind: 'text',
+        text: 'What are the main components of a microservices architecture?',
       },
     ],
     timestamp: new Date().toISOString(),
   };
 
-  const directTask = await researchClient.createTask(directMessage);
+  const directTask = await researchClient.sendMessage(directMessage);
   console.log(`Direct research task created: ${directTask.id}`);
 
   await waitForTaskCompletion(researchClient, directTask.id);
@@ -174,19 +177,19 @@ async function waitForTaskCompletion(client: A2AClient, taskId: string): Promise
   for (let i = 0; i < 30; i++) {
     const task = await client.getTask(taskId);
 
-    if (task.status === 'completed') {
+    if (task.status.state === 'completed') {
       console.log('✅ Task completed successfully!');
 
       // Display results
       const lastMessage = task.messages[task.messages.length - 1];
       if (lastMessage && lastMessage.role === 'assistant') {
         console.log('\n--- Response ---');
-        const textParts = lastMessage.parts.filter(p => p.type === 'text');
+        const textParts = lastMessage.parts.filter(p => p.kind === 'text');
         textParts.forEach(part => {
-          console.log(part.content);
+          console.log(part.text);
         });
 
-        const dataParts = lastMessage.parts.filter(p => p.type === 'data');
+        const dataParts = lastMessage.parts.filter(p => p.kind === 'data');
         if (dataParts.length > 0) {
           console.log('\n--- Structured Data ---');
           dataParts.forEach(part => {
@@ -199,8 +202,8 @@ async function waitForTaskCompletion(client: A2AClient, taskId: string): Promise
       return;
     }
 
-    if (task.status === 'failed') {
-      console.error(`❌ Task failed: ${task.error}`);
+    if (task.status.state === 'failed') {
+      console.error(`❌ Task failed: ${task.error || task.status.message}`);
       return;
     }
 

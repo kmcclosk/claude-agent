@@ -1,5 +1,5 @@
 import { BaseA2AAgent, BaseA2AAgentOptions } from '../base-agent.js';
-import { A2AMessage, A2ATask } from '../../a2a/types.js';
+import { A2AMessage } from '../../a2a/types.js';
 
 /**
  * Research Agent - Specialized in information gathering and analysis
@@ -26,7 +26,8 @@ export class ResearchAgent extends BaseA2AAgent {
    * Configure specialized system prompt for research
    */
   private setupResearchPrompt(): void {
-    const systemPrompt = `You are a Research Agent specialized in information gathering and analysis. Your capabilities include:
+    // System prompt would be configured here for Claude integration
+    const _systemPrompt = `You are a Research Agent specialized in information gathering and analysis. Your capabilities include:
 
 1. Web Search & Information Retrieval
    - Conduct comprehensive searches across multiple sources
@@ -75,7 +76,10 @@ Always structure your responses with:
       throw new Error(`Task ${taskId} not found`);
     }
 
-    task.status = 'in_progress';
+    task.status = {
+      state: 'working',
+      message: 'Conducting research and analysis'
+    };
 
     try {
       // Extract the research query and context
@@ -88,16 +92,17 @@ Always structure your responses with:
       // Perform research based on query type
       const research = await this.conductResearch(query, context);
 
-      // Create structured response
+      // Create structured response (per A2A specification)
       const responseMessage: A2AMessage = {
         role: 'assistant',
+        messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         parts: [
           {
-            type: 'text',
-            content: research.summary,
+            kind: 'text',
+            text: research.summary,
           },
           {
-            type: 'data',
+            kind: 'data',
             data: {
               findings: research.findings,
               sources: research.sources,
@@ -118,19 +123,25 @@ Always structure your responses with:
       if (research.artifacts && research.artifacts.length > 0) {
         for (const artifact of research.artifacts) {
           responseMessage.parts.push({
-            type: 'artifact',
+            kind: 'artifact',
             artifact: artifact,
           });
         }
       }
 
       task.messages.push(responseMessage);
-      task.status = 'completed';
+      task.status = {
+        state: 'completed',
+        message: 'Research completed successfully'
+      };
       task.completedAt = new Date().toISOString();
 
       this.emit('task:completed', task);
     } catch (error: any) {
-      task.status = 'failed';
+      task.status = {
+        state: 'failed',
+        message: error.message
+      };
       task.error = error.message;
       this.emit('task:failed', task, error);
     }
@@ -139,7 +150,7 @@ Always structure your responses with:
   /**
    * Conduct research based on query
    */
-  private async conductResearch(query: string, context?: any): Promise<ResearchResult> {
+  private async conductResearch(query: string, _context?: any): Promise<ResearchResult> {
     const startTime = Date.now();
 
     // Determine research type
@@ -433,10 +444,10 @@ General information gathering and analysis has been performed.
   }
 
   /**
-   * Extract data context from message
+   * Extract data context from message (per specification)
    */
   private extractDataContext(message: A2AMessage): any {
-    const dataPart = message.parts.find(p => p.type === 'data');
+    const dataPart = message.parts.find(p => p.kind === 'data');
     return dataPart?.data || {};
   }
 }

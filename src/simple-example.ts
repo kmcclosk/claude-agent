@@ -14,7 +14,7 @@ async function main(): Promise<void> {
 
   // Create a basic agent that can help with coding tasks
   const agent = query({
-    prompt: "Create a simple TODO list application in JavaScript with add, remove, and list functions",
+    prompt: "Create a simple TODO list application in JavaScript with add, remove, and list functions. Create and write to a new example directory in the current directory.",
     options: {
       // Limit which tools the agent can use
       allowedTools: ['Write', 'Read'],
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   }
 }
 
-function handleSystemMessage(message: SDKSystemMessage): void {
+function _handleSystemMessage(message: SDKSystemMessage): void {
   // System initialization message
   if (message.subtype === 'init') {
     console.log('✅ Agent initialized');
@@ -62,7 +62,11 @@ function handleSystemMessage(message: SDKSystemMessage): void {
   }
 }
 
-function handleAssistantMessage(message: SDKAssistantMessage): void {
+function handleSystemMessage(message: SDKSystemMessage): void {
+  console.log('system', JSON.stringify(message,null,2));
+}
+
+function _handleAssistantMessage(message: SDKAssistantMessage): void {
   // Extract text content from assistant messages
   const textContent = message.message.content
     .filter(c => c.type === 'text')
@@ -90,7 +94,11 @@ function handleAssistantMessage(message: SDKAssistantMessage): void {
   }
 }
 
-function handleResultMessage(message: SDKResultMessage): void {
+function handleAssistantMessage(message: SDKAssistantMessage): void {
+  console.log('assistant', JSON.stringify(message,null,2));
+}
+
+function _handleResultMessage(message: SDKResultMessage): void {
   // Final result of the agent's work
   console.log('\n📊 Task Complete!');
   console.log(`   Status: ${message.subtype}`);
@@ -104,6 +112,10 @@ function handleResultMessage(message: SDKResultMessage): void {
   } else {
     console.log('\n⚠️ The task encountered an issue:', message.subtype);
   }
+}
+
+function handleResultMessage(message: SDKResultMessage): void {
+  console.log('result', JSON.stringify(message,null,2));
 }
 
 // Run the example

@@ -1,6 +1,6 @@
 import { BaseA2AAgent, BaseA2AAgentOptions } from './base-agent.js';
 import { A2AClient } from '../a2a/protocol.js';
-import { A2AMessage, A2ATask, AgentRegistryEntry } from '../a2a/types.js';
+import { A2AMessage, AgentRegistryEntry } from '../a2a/types.js';
 
 export interface CoordinatorOptions extends BaseA2AAgentOptions {
   registryUrl?: string;
@@ -51,7 +51,8 @@ export class CoordinatorAgent extends BaseA2AAgent {
    * Configure the Claude agent with coordination capabilities
    */
   private setupSystemPrompt(): void {
-    const systemPrompt = `You are a Coordinator Agent in a multi-agent A2A system. Your role is to:
+    // System prompt would be configured here for Claude integration
+    const _systemPrompt = `You are a Coordinator Agent in a multi-agent A2A system. Your role is to:
 
 1. Analyze complex tasks and break them down into subtasks
 2. Identify which specialized agents are best suited for each subtask
@@ -86,7 +87,10 @@ Always provide clear, specific instructions to delegated agents.`;
       throw new Error(`Task ${taskId} not found`);
     }
 
-    task.status = 'in_progress';
+    task.status = {
+      state: 'working',
+      message: 'Orchestrating multi-agent task'
+    };
 
     try {
       // Extract the user's request
@@ -101,7 +105,7 @@ Always provide clear, specific instructions to delegated agents.`;
       await this.discoverAgents();
 
       // Assign subtasks to agents
-      const assignments = await this.assignSubtasks(decomposition);
+      await this.assignSubtasks(decomposition);
 
       // Execute subtasks (with dependency management)
       const results = await this.executeSubtasks(decomposition);
@@ -109,16 +113,17 @@ Always provide clear, specific instructions to delegated agents.`;
       // Synthesize results
       const finalResponse = await this.synthesizeResults(decomposition, results);
 
-      // Create response message
+      // Create response message (per A2A specification)
       const responseMessage: A2AMessage = {
         role: 'assistant',
+        messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         parts: [
           {
-            type: 'text',
-            content: finalResponse,
+            kind: 'text',
+            text: finalResponse,
           },
           {
-            type: 'data',
+            kind: 'data',
             data: {
               decomposition: decomposition,
               agentResults: results,
@@ -129,12 +134,18 @@ Always provide clear, specific instructions to delegated agents.`;
       };
 
       task.messages.push(responseMessage);
-      task.status = 'completed';
+      task.status = {
+        state: 'completed',
+        message: 'Task orchestration completed successfully'
+      };
       task.completedAt = new Date().toISOString();
 
       this.emit('task:completed', task);
     } catch (error: any) {
-      task.status = 'failed';
+      task.status = {
+        state: 'failed',
+        message: error.message
+      };
       task.error = error.message;
       this.emit('task:failed', task, error);
     }
@@ -218,7 +229,7 @@ Always provide clear, specific instructions to delegated agents.`;
     try {
       const response = await fetch(`${this.registryUrl}/agents`);
       if (response.ok) {
-        const agents: AgentRegistryEntry[] = await response.json();
+        const agents = await response.json() as AgentRegistryEntry[];
 
         for (const entry of agents) {
           this.knownAgents.set(entry.agentCard.name, entry);
@@ -370,23 +381,24 @@ Always provide clear, specific instructions to delegated agents.`;
           // Prepare context from dependencies
           const context = this.prepareContext(subtask, results);
 
-          // Create task on remote agent
+          // Create task on remote agent (per A2A specification)
           const message: A2AMessage = {
             role: 'user',
+            messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             parts: [
               {
-                type: 'text',
-                content: subtask.description,
+                kind: 'text',
+                text: subtask.description,
               },
               {
-                type: 'data',
+                kind: 'data',
                 data: context,
               },
             ],
             timestamp: new Date().toISOString(),
           };
 
-          const remoteTask = await client.createTask(message, {
+          const remoteTask = await client.sendMessage(message, {
             parentTask: subtask.id,
             coordinator: this.name,
           });
@@ -436,14 +448,14 @@ Always provide clear, specific instructions to delegated agents.`;
     for (let i = 0; i < maxAttempts; i++) {
       const task = await client.getTask(taskId);
 
-      if (task.status === 'completed') {
+      if (task.status.state === 'completed') {
         // Extract result from last message
         const lastMessage = task.messages[task.messages.length - 1];
         return this.extractResultFromMessage(lastMessage);
       }
 
-      if (task.status === 'failed') {
-        throw new Error(`Remote task failed: ${task.error}`);
+      if (task.status.state === 'failed') {
+        throw new Error(`Remote task failed: ${task.error || task.status.message}`);
       }
 
       // Wait before next poll
@@ -454,19 +466,19 @@ Always provide clear, specific instructions to delegated agents.`;
   }
 
   /**
-   * Extract result from A2A message
+   * Extract result from A2A message (per specification)
    */
   private extractResultFromMessage(message: A2AMessage): any {
     // Look for data parts first
-    const dataPart = message.parts.find(p => p.type === 'data');
+    const dataPart = message.parts.find(p => p.kind === 'data');
     if (dataPart) {
       return dataPart.data;
     }
 
     // Fall back to text
-    const textParts = message.parts.filter(p => p.type === 'text');
+    const textParts = message.parts.filter(p => p.kind === 'text');
     if (textParts.length > 0) {
-      return textParts.map(p => p.content).join('\n');
+      return textParts.map(p => p.text || '').join('\n');
     }
 
     return null;

@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express } from 'express';
 import { Server } from 'http';
 import { A2AAgentCard, AgentRegistryEntry } from '../a2a/types.js';
 import { A2AClient } from '../a2a/protocol.js';
@@ -27,7 +27,7 @@ export class AgentRegistry {
     this.server.use(express.json());
 
     // Get all registered agents
-    this.server.get('/agents', (req, res) => {
+    this.server.get('/agents', (_req, res) => {
       const agents = Array.from(this.agents.values());
       res.json(agents);
     });
@@ -48,7 +48,8 @@ export class AgentRegistry {
         const { name, url } = req.body;
 
         if (!name || !url) {
-          return res.status(400).json({ error: 'Name and URL required' });
+          res.status(400).json({ error: 'Name and URL required' });
+          return;
         }
 
         // Fetch agent card from the agent
@@ -103,10 +104,11 @@ export class AgentRegistry {
         entry.status === status
       );
       res.json(matching);
+      return;
     });
 
     // Health check endpoint for the registry itself
-    this.server.get('/health', (req, res) => {
+    this.server.get('/health', (_req, res) => {
       res.json({
         status: 'healthy',
         agentsRegistered: this.agents.size,
@@ -115,7 +117,7 @@ export class AgentRegistry {
     });
 
     // Get registry statistics
-    this.server.get('/stats', (req, res) => {
+    this.server.get('/stats', (_req, res) => {
       const stats = {
         totalAgents: this.agents.size,
         onlineAgents: Array.from(this.agents.values()).filter(a => a.status === 'online').length,
@@ -127,7 +129,7 @@ export class AgentRegistry {
     });
 
     // Trigger manual health check
-    this.server.post('/agents/health-check', async (req, res) => {
+    this.server.post('/agents/health-check', async (_req, res) => {
       await this.performHealthCheck();
       res.json({ success: true, message: 'Health check completed' });
     });
@@ -361,7 +363,7 @@ export class ServiceDiscoveryClient {
         throw new Error(`Discovery failed: ${response.status}`);
       }
 
-      return await response.json();
+      return await response.json() as AgentRegistryEntry[];
     } catch (error) {
       console.error('Failed to discover agents:', error);
       return [];
@@ -379,7 +381,7 @@ export class ServiceDiscoveryClient {
         throw new Error(`Failed to get agents: ${response.status}`);
       }
 
-      return await response.json();
+      return await response.json() as AgentRegistryEntry[];
     } catch (error) {
       console.error('Failed to get agents:', error);
       return [];

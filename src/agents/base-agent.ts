@@ -1,9 +1,9 @@
-import { Agent, AgentOptions, Tool } from '@anthropic-ai/claude-agent-sdk';
+import { Agent, AgentOptions, Tool } from '../utils/claude-shim.js';
 import { EventEmitter } from 'events';
-import express, { Express, Request, Response } from 'express';
+import express, { Express } from 'express';
 import { Server } from 'http';
 import jsonrpc from 'jsonrpc-lite';
-import { A2AAgentCard, A2AMessage, A2APart, A2ATask } from '../a2a/types.js';
+import { A2AAgentCard, A2AMessage, A2ATask } from '../a2a/types.js';
 
 export interface BaseA2AAgentOptions extends AgentOptions {
   name: string;
@@ -47,7 +47,7 @@ export class BaseA2AAgent extends EventEmitter {
   }
 
   /**
-   * Generate Agent Card for A2A discovery
+   * Generate Agent Card for A2A discovery (per specification)
    */
   public getAgentCard(): A2AAgentCard {
     return {
@@ -58,7 +58,7 @@ export class BaseA2AAgent extends EventEmitter {
       endpoints: {
         base: `http://localhost:${this.port}`,
         rpc: `http://localhost:${this.port}/rpc`,
-        card: `http://localhost:${this.port}/agent-card`,
+        card: `http://localhost:${this.port}/.well-known/agent.json`,
         tasks: `http://localhost:${this.port}/tasks`,
       },
       authentication: {
@@ -76,8 +76,8 @@ export class BaseA2AAgent extends EventEmitter {
   protected setupA2AEndpoints(): void {
     this.server.use(express.json());
 
-    // Agent Card endpoint
-    this.server.get('/agent-card', (req, res) => {
+    // Agent Card endpoint (per A2A specification)
+    this.server.get('/.well-known/agent.json', (_req, res) => {
       res.json(this.getAgentCard());
     });
 
@@ -89,12 +89,12 @@ export class BaseA2AAgent extends EventEmitter {
         const result = await this.handleRPCRequest(parsed.payload);
         res.json(result);
       } else {
-        res.json(jsonrpc.error(null, jsonrpc.JsonRpcError.invalidRequest()));
+        res.json(jsonrpc.error(null, new jsonrpc.JsonRpcError('Invalid request', -32600)));
       }
     });
 
     // Task management endpoints
-    this.server.get('/tasks', (req, res) => {
+    this.server.get('/tasks', (_req, res) => {
       const tasks = Array.from(this.tasks.values());
       res.json(tasks);
     });
@@ -115,28 +115,31 @@ export class BaseA2AAgent extends EventEmitter {
   }
 
   /**
-   * Handle JSON-RPC requests
+   * Handle JSON-RPC requests (per A2A specification)
    */
   protected async handleRPCRequest(request: any): Promise<any> {
     try {
       switch (request.method) {
-        case 'task.create':
+        case 'message/send':
           const task = await this.createTask(request.params);
           return jsonrpc.success(request.id, task);
 
-        case 'task.get':
+        case 'tasks/get':
           const existingTask = this.tasks.get(request.params.id);
           if (existingTask) {
             return jsonrpc.success(request.id, existingTask);
           }
           return jsonrpc.error(request.id, new jsonrpc.JsonRpcError('Task not found', 404));
 
-        case 'task.update':
+        case 'tasks/update':
           const updatedTask = await this.updateTask(request.params.id, request.params.updates);
           return jsonrpc.success(request.id, updatedTask);
 
-        case 'agent.capabilities':
+        case 'agent/capabilities':
           return jsonrpc.success(request.id, this.getAgentCard());
+
+        case 'agent/ping':
+          return jsonrpc.success(request.id, { status: 'ok', timestamp: new Date().toISOString() });
 
         default:
           return jsonrpc.error(
@@ -153,21 +156,31 @@ export class BaseA2AAgent extends EventEmitter {
   }
 
   /**
-   * Create a new task
+   * Create a new task (per A2A specification)
    */
   protected async createTask(params: any): Promise<A2ATask> {
     const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const contextId = params.contextId || `ctx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const task: A2ATask = {
       id: taskId,
-      status: 'pending',
+      contextId: contextId,
+      status: {
+        state: 'submitted',
+        message: 'Task created and queued for processing'
+      },
       createdAt: new Date().toISOString(),
       messages: [],
       metadata: params.metadata || {},
     };
 
     if (params.message) {
-      task.messages.push(params.message);
+      // Ensure message has messageId
+      const message = params.message;
+      if (!message.messageId) {
+        message.messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+      task.messages.push(message);
     }
 
     this.tasks.set(taskId, task);
@@ -175,7 +188,10 @@ export class BaseA2AAgent extends EventEmitter {
     // Process task asynchronously
     this.processTask(taskId).catch(error => {
       console.error(`Error processing task ${taskId}:`, error);
-      task.status = 'failed';
+      task.status = {
+        state: 'failed',
+        message: error.message
+      };
       task.error = error.message;
     });
 
@@ -192,7 +208,12 @@ export class BaseA2AAgent extends EventEmitter {
     }
 
     if (updates.message) {
-      task.messages.push(updates.message);
+      // Ensure message has messageId
+      const message = updates.message;
+      if (!message.messageId) {
+        message.messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+      task.messages.push(message);
     }
 
     if (updates.status) {
@@ -218,7 +239,10 @@ export class BaseA2AAgent extends EventEmitter {
       throw new Error(`Task ${taskId} not found`);
     }
 
-    task.status = 'in_progress';
+    task.status = {
+      state: 'working',
+      message: 'Processing task'
+    };
 
     try {
       // Extract the latest user message
@@ -233,38 +257,45 @@ export class BaseA2AAgent extends EventEmitter {
       // Process with Claude Agent SDK
       const response = await this.agent.sendMessage(messageText);
 
-      // Convert response back to A2A format
+      // Convert response back to A2A format (per specification)
       const responseMessage: A2AMessage = {
         role: 'assistant',
+        messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         parts: [
           {
-            type: 'text',
-            content: response.content,
+            kind: 'text',
+            text: response.content,
           },
         ],
         timestamp: new Date().toISOString(),
       };
 
       task.messages.push(responseMessage);
-      task.status = 'completed';
+      task.status = {
+        state: 'completed',
+        message: 'Task completed successfully'
+      };
       task.completedAt = new Date().toISOString();
 
       // Emit task completion event
       this.emit('task:completed', task);
     } catch (error: any) {
-      task.status = 'failed';
+      task.status = {
+        state: 'failed',
+        message: error.message
+      };
       task.error = error.message;
       this.emit('task:failed', task, error);
     }
   }
 
   /**
-   * Extract text content from A2A message
+   * Extract text content from A2A message (per specification)
    */
   protected extractTextFromMessage(message: A2AMessage): string {
     return message.parts
-      .filter(part => part.type === 'text')
-      .map(part => part.content)
+      .filter(part => part.kind === 'text')
+      .map(part => part.text || '')
       .join('\n');
   }
 
@@ -275,7 +306,7 @@ export class BaseA2AAgent extends EventEmitter {
     return new Promise((resolve) => {
       this.httpServer = this.server.listen(this.port, () => {
         console.log(`${this.name} listening on port ${this.port}`);
-        console.log(`Agent Card available at http://localhost:${this.port}/agent-card`);
+        console.log(`Agent Card available at http://localhost:${this.port}/.well-known/agent.json`);
         this.emit('ready');
         resolve();
       });
