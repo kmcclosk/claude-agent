@@ -1,9 +1,3 @@
-/**
- * Shim for Claude Agent SDK integration
- * Since the actual SDK has a different API structure, we create a wrapper
- * to maintain our expected interface while the SDK evolves.
- */
-
 import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
 import { EventEmitter } from 'events';
 

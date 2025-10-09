@@ -527,3 +527,46 @@ Always provide clear, specific instructions to delegated agents.`;
     return Array.from(this.knownAgents.values());
   }
 }
+
+// Main execution for running as standalone server
+async function main() {
+  console.log('🤖 Starting Coordinator Agent...\n');
+
+  const coordinator = new CoordinatorAgent({
+    name: 'CoordinatorAgent',
+    description: 'Orchestrates complex tasks across multiple specialized agents',
+    port: 3000,
+    capabilities: [
+      'task-decomposition',
+      'agent-orchestration',
+      'multi-agent-coordination',
+      'result-synthesis'
+    ],
+    version: '1.0.0',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-sonnet-4',
+    registryUrl: 'http://localhost:3100'
+  });
+
+  await coordinator.start();
+
+  console.log('\n✅ Coordinator Agent is ready!');
+  console.log('   - Agent Card: http://localhost:3000/.well-known/agent.json');
+  console.log('   - RPC Endpoint: http://localhost:3000/rpc');
+  console.log('   - Registry URL: http://localhost:3100\n');
+
+  // Handle shutdown gracefully
+  process.on('SIGINT', async () => {
+    console.log('\n\n🛑 Shutting down Coordinator Agent...');
+    await coordinator.stop();
+    process.exit(0);
+  });
+}
+
+// Run if executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(error => {
+    console.error('Error starting Coordinator Agent:', error);
+    process.exit(1);
+  });
+}

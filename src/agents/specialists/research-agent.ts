@@ -480,3 +480,52 @@ interface ResearchSource {
   relevance: number; // 0-1
   accessedAt?: string;
 }
+
+// Main execution for running as standalone server
+async function main() {
+  console.log('🔍 Starting Research Agent...\n');
+
+  const researchAgent = new ResearchAgent({
+    name: 'ResearchAgent',
+    description: 'Specialized agent for information gathering, analysis, and research tasks',
+    port: 3001,
+    capabilities: [
+      'web-search',
+      'information-retrieval',
+      'data-analysis',
+      'technical-research',
+      'market-research',
+      'comparative-analysis'
+    ],
+    version: '1.0.0',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-sonnet-4'
+  });
+
+  await researchAgent.start();
+
+  console.log('\n✅ Research Agent is ready!');
+  console.log('   - Agent Card: http://localhost:3001/.well-known/agent.json');
+  console.log('   - RPC Endpoint: http://localhost:3001/rpc');
+  console.log('\nCapabilities:');
+  console.log('   - Web Search & Information Retrieval');
+  console.log('   - Technical Research & Analysis');
+  console.log('   - Market & Competitive Research');
+  console.log('   - Academic & Scientific Research');
+  console.log('   - Comparative Analysis\n');
+
+  // Handle shutdown gracefully
+  process.on('SIGINT', async () => {
+    console.log('\n\n🛑 Shutting down Research Agent...');
+    await researchAgent.stop();
+    process.exit(0);
+  });
+}
+
+// Run if executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(error => {
+    console.error('Error starting Research Agent:', error);
+    process.exit(1);
+  });
+}

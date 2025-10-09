@@ -1,8 +1,9 @@
-import { Agent, AgentOptions, Tool } from '../utils/claude-shim.js';
 import { EventEmitter } from 'events';
 import express, { Express } from 'express';
 import { Server } from 'http';
 import jsonrpc from 'jsonrpc-lite';
+
+import { Agent, AgentOptions, Tool } from '../utils/claude-agent.js';
 import { A2AAgentCard, A2AMessage, A2ATask } from '../a2a/types.js';
 
 export interface BaseA2AAgentOptions extends AgentOptions {

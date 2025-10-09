@@ -53,8 +53,8 @@ async function analyzeCodebase(directory: string = './src'): Promise<string> {
             const assistantMsg = message as SDKAssistantMessage;
             // Extract text content from assistant messages
             const textContent = assistantMsg.message.content
-                .filter(c => c.type === 'text')
-                .map(c => 'text' in c ? c.text : '')
+                .filter((c: any) => c.type === 'text')
+                .map((c: any) => 'text' in c ? c.text : '')
                 .join('\n');
             analysis += textContent;
         }
@@ -135,7 +135,7 @@ async function refactorWithHooks(targetFile: string): Promise<ToolUse[]> {
             allowedTools: ['Read', 'Edit', 'Bash'],
             hooks: {
                 PreToolUse: [{
-                    hooks: [async (input: HookInput, toolUseId: string | undefined, { signal }): Promise<HookJSONOutput> => {
+                    hooks: [async (input: HookInput, _toolUseId: string | undefined, { signal: _signal }): Promise<HookJSONOutput> => {
                         if (input.hook_event_name === 'PreToolUse') {
                             console.log(`  ⚙️  ${input.tool_name}: ${JSON.stringify(input.tool_input).slice(0, 50)}...`);
                         }
@@ -143,7 +143,7 @@ async function refactorWithHooks(targetFile: string): Promise<ToolUse[]> {
                     }]
                 }],
                 PostToolUse: [{
-                    hooks: [async (input: HookInput, toolUseId: string | undefined, { signal }): Promise<HookJSONOutput> => {
+                    hooks: [async (input: HookInput, _toolUseId: string | undefined, { signal: _signal }): Promise<HookJSONOutput> => {
                         if (input.hook_event_name === 'PostToolUse' && input.tool_name === 'Edit') {
                             const toolInput = input.tool_input as { file_path?: string };
                             console.log(`  ✏️  File modified: ${toolInput?.file_path}`);
@@ -160,7 +160,7 @@ async function refactorWithHooks(targetFile: string): Promise<ToolUse[]> {
         if (message.type === 'assistant') {
             const assistantMsg = message as SDKAssistantMessage;
             const edits = assistantMsg.message.content.filter(
-                (c): c is ToolUse => c.type === 'tool_use' && 'name' in c && c.name === 'Edit'
+                (c: any): c is ToolUse => c.type === 'tool_use' && 'name' in c && c.name === 'Edit'
             );
             changes.push(...edits);
         }
@@ -190,7 +190,7 @@ async function runBackgroundTasks(): Promise<BackgroundProcess[]> {
             const assistantMsg = message as SDKAssistantMessage;
             // Track background processes
             const bgTasks = assistantMsg.message.content.filter(
-                (c): c is ToolUse =>
+                (c: any): c is ToolUse =>
                     c.type === 'tool_use' &&
                     'name' in c &&
                     c.name === 'Bash' &&
@@ -264,23 +264,27 @@ async function prompts(): Promise<void> {
     const stream = query({
         prompt: (async function* () {
             yield {
-                type: 'user',
+                type: 'user' as const,
+                parent_tool_use_id: null,
                 message: {
-                    role: 'user',
+                    role: 'user' as const,
                     content: 'during the years Texas was independent - what form of government?',
-                }
+                },
+                session_id: '',
             };
             yield {
-                type: 'user',
+                type: 'user' as const,
+                parent_tool_use_id: null,
                 message: {
-                    role: 'user',
+                    role: 'user' as const,
                     content: 'Who were the leaders?'
-                }
+                },
+                session_id: '',
             };
         })(),
         options: {
-            // systemPrompt: 'You are a general helpful assistant who always answers the user with a humorous joke.',
-            canUseTool: (toolName, toolInput) => {
+            systemPrompt: 'You are a general helpful assistant who always answers the user with a humorous joke.',
+            canUseTool: async (toolName, toolInput) => {
                 console.log('canUseTool', { toolName, toolInput });
                 return { behavior: "allow", updatedInput: toolInput };
             }
@@ -361,7 +365,7 @@ async function mcpServerExample(): Promise<void> {
     const timeAgent = query({
         prompt: 'What is the current time? Please use the getCurrentTime tool to get the current time in ISO format, and then tell me what time it is in a friendly way.',
         options: {
-            mcpServers: [timeServer],
+            mcpServers: { 'time-server': timeServer },
             maxTurns: 5,
             permissionMode: 'bypassPermissions'  // Automatically allow tool use
         }
@@ -374,7 +378,7 @@ async function mcpServerExample(): Promise<void> {
             const assistantMsg = message as SDKAssistantMessage;
 
             // Show tool uses
-            const toolUses = assistantMsg.message.content.filter(c => c.type === 'tool_use');
+            const toolUses = assistantMsg.message.content.filter((c: any) => c.type === 'tool_use');
             for (const toolUse of toolUses) {
                 if ('name' in toolUse && toolUse.name === 'getCurrentTime') {
                     console.log('  🔧 Tool called: getCurrentTime');
@@ -384,8 +388,8 @@ async function mcpServerExample(): Promise<void> {
 
             // Show text responses
             const textContent = assistantMsg.message.content
-                .filter(c => c.type === 'text')
-                .map(c => 'text' in c ? c.text : '')
+                .filter((c: any) => c.type === 'text')
+                .map((c: any) => 'text' in c ? c.text : '')
                 .join('\n');
 
             if (textContent) {
@@ -421,8 +425,8 @@ function handleAgentMessage(message: SDKMessage): void {
         case 'assistant': {
             const assistantMsg = message as SDKAssistantMessage;
             const textContent = assistantMsg.message.content
-                .filter(c => c.type === 'text')
-                .map(c => 'text' in c ? c.text : '')
+                .filter((c: any) => c.type === 'text')
+                .map((c: any) => 'text' in c ? c.text : '')
                 .join('\n');
             if (textContent) {
                 console.log('Assistant:', textContent, '\n');

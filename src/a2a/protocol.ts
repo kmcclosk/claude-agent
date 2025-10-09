@@ -1,4 +1,4 @@
-import jsonrpc from 'jsonrpc-lite';
+// import jsonrpc from 'jsonrpc-lite';
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
 import {
@@ -277,14 +277,6 @@ export class A2AClient extends A2AProtocol {
       A2AMethods.TASKS_UPDATE,
       { id: taskId, updates: { message, metadata } }
     );
-  }
-
-  /**
-   * Legacy method for backward compatibility - redirects to sendMessage
-   * @deprecated Use sendMessage instead
-   */
-  public async createTask(message: A2AMessage, metadata?: any): Promise<A2ATask> {
-    return this.sendMessage(message, metadata);
   }
 
   /**
