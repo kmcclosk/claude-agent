@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "simple": "tsx src/simple-example.ts",
     "interactive:demo": "tsx src/interactive-agent.ts demo",
@@ -18,10 +19,10 @@
     "example:secure": "tsx src/example-agent.ts secure",
     "example:prompts": "tsx src/example-agent.ts prompts",
     "example:mcp": "tsx src/example-agent.ts mcp",
-    "demo:a2a": "tsx src/demo-multi-agent.ts",
-    "agent:coordinator": "tsx src/agents/coordinator.ts",
-    "agent:research": "tsx src/agents/specialists/research-agent.ts",
-    "registry": "tsx src/server/registry.ts"
+    "demo:a2a": "tsx src/a2a/demo-multi-agent.ts",
+    "agent:coordinator": "tsx src/a2a/agents/coordinator.ts",
+    "agent:research": "tsx src/a2a/agents/research-agent.ts",
+    "registry": "tsx src/a2a/server/registry.ts"
   },
   "keywords": [
     "ai",

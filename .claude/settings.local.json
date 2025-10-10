@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:a2a-protocol.org)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

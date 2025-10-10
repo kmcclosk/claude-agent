@@ -1,21 +1,68 @@
 import { BaseA2AAgent, BaseA2AAgentOptions } from '../base-agent.js';
-import { A2AMessage } from '../../a2a/types.js';
+import { A2AMessage } from '../a2a-types.js';
 
 /**
  * Research Agent - Specialized in information gathering and analysis
  */
 export class ResearchAgent extends BaseA2AAgent {
-  constructor(options: Omit<BaseA2AAgentOptions, 'capabilities'>) {
+  constructor(options: Omit<BaseA2AAgentOptions, 'skills'>) {
     super({
       ...options,
-      capabilities: [
-        'research',
-        'web_search',
-        'documentation_analysis',
-        'information_extraction',
-        'summarization',
-        'fact_checking',
-        'literature_review',
+      capabilities: {
+        streaming: false,
+        pushNotifications: false,
+        stateTransitionHistory: false,
+      },
+      skills: [
+        {
+          id: 'research',
+          name: 'Research',
+          description: 'General research and information gathering',
+          inputModes: ['application/json', 'text/plain'],
+          outputModes: ['application/json', 'text/plain'],
+        },
+        {
+          id: 'web_search',
+          name: 'Web Search',
+          description: 'Search the web for relevant information',
+          inputModes: ['text/plain', 'application/json'],
+          outputModes: ['application/json', 'text/plain'],
+        },
+        {
+          id: 'documentation_analysis',
+          name: 'Documentation Analysis',
+          description: 'Analyze and extract information from documentation',
+          inputModes: ['text/plain', 'application/json'],
+          outputModes: ['application/json', 'text/plain'],
+        },
+        {
+          id: 'information_extraction',
+          name: 'Information Extraction',
+          description: 'Extract structured information from unstructured text',
+          inputModes: ['text/plain', 'application/json'],
+          outputModes: ['application/json'],
+        },
+        {
+          id: 'summarization',
+          name: 'Summarization',
+          description: 'Summarize long texts into concise summaries',
+          inputModes: ['text/plain'],
+          outputModes: ['text/plain'],
+        },
+        {
+          id: 'fact_checking',
+          name: 'Fact Checking',
+          description: 'Verify factual claims against reliable sources',
+          inputModes: ['text/plain', 'application/json'],
+          outputModes: ['application/json', 'text/plain'],
+        },
+        {
+          id: 'literature_review',
+          name: 'Literature Review',
+          description: 'Review and synthesize academic or technical literature',
+          inputModes: ['application/json', 'text/plain'],
+          outputModes: ['application/json', 'text/plain'],
+        },
       ],
     });
 
@@ -92,9 +139,9 @@ Always structure your responses with:
       // Perform research based on query type
       const research = await this.conductResearch(query, context);
 
-      // Create structured response (per A2A specification)
+      // Create structured response (per A2A specification v0.3.0)
       const responseMessage: A2AMessage = {
-        role: 'assistant',
+        role: 'agent',
         messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         parts: [
           {
@@ -489,14 +536,6 @@ async function main() {
     name: 'ResearchAgent',
     description: 'Specialized agent for information gathering, analysis, and research tasks',
     port: 3001,
-    capabilities: [
-      'web-search',
-      'information-retrieval',
-      'data-analysis',
-      'technical-research',
-      'market-research',
-      'comparative-analysis'
-    ],
     version: '1.0.0',
     apiKey: process.env.ANTHROPIC_API_KEY,
     model: 'claude-sonnet-4'
@@ -505,7 +544,7 @@ async function main() {
   await researchAgent.start();
 
   console.log('\n✅ Research Agent is ready!');
-  console.log('   - Agent Card: http://localhost:3001/.well-known/agent.json');
+  console.log('   - Agent Card: http://localhost:3001/.well-known/agent-card.json');
   console.log('   - RPC Endpoint: http://localhost:3001/rpc');
   console.log('\nCapabilities:');
   console.log('   - Web Search & Information Retrieval');

@@ -5,8 +5,6 @@
 
 import {
     query,
-    createSdkMcpServer,
-    tool,
     type SDKMessage,
     type SDKAssistantMessage,
     type SDKResultMessage,
@@ -17,6 +15,8 @@ import {
     type HookInput,
     type HookJSONOutput
 } from '@anthropic-ai/claude-agent-sdk';
+
+import { timeServer } from './mcp/time-server.js';
 
 // Type definitions
 interface BackgroundProcess {
@@ -299,68 +299,11 @@ async function prompts(): Promise<void> {
     }
 }
 
-// Example 6: Inline MCP Server with Current Time
+// Example 6: MCP Server with Current Time
 async function mcpServerExample(): Promise<void> {
     console.log('⏰ MCP Server Example - Current Time\n');
 
-    // Create an inline MCP server with a getCurrentTime tool
-    const timeServer = createSdkMcpServer({
-        name: 'time-server',
-        version: '1.0.0',
-        tools: [
-            tool(
-                'getCurrentTime',
-                'Returns the current time in various formats',
-                {
-                    type: 'object',
-                    properties: {
-                        format: {
-                            type: 'string',
-                            enum: ['iso', 'unix', 'locale', 'utc'],
-                            description: 'The format for the time output',
-                            default: 'iso'
-                        },
-                        timezone: {
-                            type: 'string',
-                            description: 'Timezone (e.g., America/New_York)',
-                            default: 'UTC'
-                        }
-                    }
-                },
-                async ({ format = 'iso', timezone = 'UTC' }) => {
-
-                    console.log('getCurrentTime', { format, timezone });
-
-                    const now = new Date();
-
-                    let timeString: string;
-                    switch (format) {
-                        case 'unix':
-                            timeString = Math.floor(now.getTime() / 1000).toString();
-                            break;
-                        case 'locale':
-                            timeString = now.toLocaleString('en-US', { timeZone: timezone });
-                            break;
-                        case 'utc':
-                            timeString = now.toUTCString();
-                            break;
-                        case 'iso':
-                        default:
-                            timeString = now.toISOString();
-                            break;
-                    }
-
-                    return {
-                        time: timeString,
-                        format: format,
-                        timezone: timezone,
-                        timestamp: now.getTime()
-                    };
-                }
-            )
-        ]
-    });
-
+    // Use the time server MCP (imported from ./mcp/time-server.ts)
     // Query the agent to use the MCP server
     const timeAgent = query({
         prompt: 'What is the current time? Please use the getCurrentTime tool to get the current time in ISO format, and then tell me what time it is in a friendly way.',

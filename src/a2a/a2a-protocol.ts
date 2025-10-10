@@ -232,10 +232,10 @@ export class A2AClient extends A2AProtocol {
   }
 
   /**
-   * Connect to the remote agent and fetch its card
+   * Connect to the remote agent and fetch its card (per A2A spec v0.3.0)
    */
   public async connect(): Promise<A2AAgentCard> {
-    const response = await fetch(`${this.agentUrl}/agent-card`);
+    const response = await fetch(`${this.agentUrl}/.well-known/agent-card.json`);
     if (!response.ok) {
       throw new Error(`Failed to fetch agent card: ${response.status}`);
     }

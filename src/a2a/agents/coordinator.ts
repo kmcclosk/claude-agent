@@ -1,6 +1,6 @@
-import { BaseA2AAgent, BaseA2AAgentOptions } from './base-agent.js';
-import { A2AClient } from '../a2a/protocol.js';
-import { A2AMessage, AgentRegistryEntry } from '../a2a/types.js';
+import { BaseA2AAgent, BaseA2AAgentOptions } from '../base-agent.js';
+import { A2AClient } from '../a2a-protocol.js';
+import { A2AMessage, AgentRegistryEntry } from '../a2a-types.js';
 
 export interface CoordinatorOptions extends BaseA2AAgentOptions {
   registryUrl?: string;
@@ -11,7 +11,7 @@ interface TaskDecomposition {
   subtasks: Array<{
     id: string;
     description: string;
-    requiredCapabilities: string[];
+    requiredSkills: string[];  // Changed from requiredCapabilities per A2A spec v0.3.0
     dependencies: string[];
     assignedAgent?: string;
     status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'failed';
@@ -19,9 +19,8 @@ interface TaskDecomposition {
   }>;
 }
 
-/**
- * Coordinator Agent - Orchestrates tasks across multiple specialized agents
- */
+// Coordinator Agent - Orchestrates tasks across multiple specialized agents
+
 export class CoordinatorAgent extends BaseA2AAgent {
   private registryUrl: string;
   private knownAgents: Map<string, AgentRegistryEntry> = new Map();
@@ -31,13 +30,47 @@ export class CoordinatorAgent extends BaseA2AAgent {
   constructor(options: CoordinatorOptions) {
     super({
       ...options,
-      capabilities: [
-        'task_orchestration',
-        'agent_discovery',
-        'task_decomposition',
-        'result_synthesis',
-        'workflow_management',
-        ...(options.capabilities || [])
+      capabilities: {
+        streaming: false,
+        pushNotifications: false,
+        stateTransitionHistory: false,
+      },
+      skills: [
+        {
+          id: 'task_orchestration',
+          name: 'Task Orchestration',
+          description: 'Coordinate and orchestrate complex multi-agent tasks',
+          inputModes: ['application/json', 'text/plain'],
+          outputModes: ['application/json', 'text/plain'],
+        },
+        {
+          id: 'agent_discovery',
+          name: 'Agent Discovery',
+          description: 'Discover and select appropriate specialist agents',
+          inputModes: ['application/json', 'text/plain'],
+          outputModes: ['application/json'],
+        },
+        {
+          id: 'task_decomposition',
+          name: 'Task Decomposition',
+          description: 'Break down complex tasks into subtasks',
+          inputModes: ['application/json', 'text/plain'],
+          outputModes: ['application/json'],
+        },
+        {
+          id: 'result_synthesis',
+          name: 'Result Synthesis',
+          description: 'Combine results from multiple agents',
+          inputModes: ['application/json'],
+          outputModes: ['application/json', 'text/plain'],
+        },
+        {
+          id: 'workflow_management',
+          name: 'Workflow Management',
+          description: 'Manage task workflows and dependencies',
+          inputModes: ['application/json'],
+          outputModes: ['application/json'],
+        },
       ],
     });
 
@@ -47,11 +80,8 @@ export class CoordinatorAgent extends BaseA2AAgent {
     this.setupSystemPrompt();
   }
 
-  /**
-   * Configure the Claude agent with coordination capabilities
-   */
   private setupSystemPrompt(): void {
-    // System prompt would be configured here for Claude integration
+
     const _systemPrompt = `You are a Coordinator Agent in a multi-agent A2A system. Your role is to:
 
 1. Analyze complex tasks and break them down into subtasks
@@ -78,9 +108,6 @@ Always provide clear, specific instructions to delegated agents.`;
     console.log('Coordinator system prompt configured');
   }
 
-  /**
-   * Process incoming task with orchestration
-   */
   protected async processTask(taskId: string): Promise<void> {
     const task = this.tasks.get(taskId);
     if (!task) {
@@ -113,9 +140,9 @@ Always provide clear, specific instructions to delegated agents.`;
       // Synthesize results
       const finalResponse = await this.synthesizeResults(decomposition, results);
 
-      // Create response message (per A2A specification)
+      // Create response message (per A2A specification v0.3.0)
       const responseMessage: A2AMessage = {
-        role: 'assistant',
+        role: 'agent',
         messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         parts: [
           {
@@ -151,9 +178,6 @@ Always provide clear, specific instructions to delegated agents.`;
     }
   }
 
-  /**
-   * Decompose a complex task into subtasks
-   */
   private async decomposeTask(userRequest: string): Promise<TaskDecomposition> {
     // In a real implementation, this would use Claude to analyze the request
     // For now, we'll create a simple decomposition
@@ -173,7 +197,7 @@ Always provide clear, specific instructions to delegated agents.`;
       decomposition.subtasks.push({
         id: `subtask_${Date.now()}_1`,
         description: `Research and gather information about: ${userRequest}`,
-        requiredCapabilities: ['research', 'web_search'],
+        requiredSkills: ['research', 'web_search'],
         dependencies: [],
         status: 'pending',
       });
@@ -183,12 +207,12 @@ Always provide clear, specific instructions to delegated agents.`;
         userRequest.toLowerCase().includes('implement') ||
         userRequest.toLowerCase().includes('function')) {
       const researchTaskId = decomposition.subtasks.find(t =>
-        t.requiredCapabilities.includes('research'))?.id;
+        t.requiredSkills.includes('research'))?.id;
 
       decomposition.subtasks.push({
         id: `subtask_${Date.now()}_2`,
         description: `Generate code implementation for: ${userRequest}`,
-        requiredCapabilities: ['code_generation', 'programming'],
+        requiredSkills: ['code_generation', 'programming'],
         dependencies: researchTaskId ? [researchTaskId] : [],
         status: 'pending',
       });
@@ -197,12 +221,12 @@ Always provide clear, specific instructions to delegated agents.`;
     if (userRequest.toLowerCase().includes('test') ||
         userRequest.toLowerCase().includes('validate')) {
       const codeTaskId = decomposition.subtasks.find(t =>
-        t.requiredCapabilities.includes('code_generation'))?.id;
+        t.requiredSkills.includes('code_generation'))?.id;
 
       decomposition.subtasks.push({
         id: `subtask_${Date.now()}_3`,
         description: `Test and validate implementation: ${userRequest}`,
-        requiredCapabilities: ['testing', 'validation'],
+        requiredSkills: ['testing', 'validation'],
         dependencies: codeTaskId ? [codeTaskId] : [],
         status: 'pending',
       });
@@ -213,7 +237,7 @@ Always provide clear, specific instructions to delegated agents.`;
       decomposition.subtasks.push({
         id: `subtask_${Date.now()}_general`,
         description: userRequest,
-        requiredCapabilities: ['general'],
+        requiredSkills: ['general'],
         dependencies: [],
         status: 'pending',
       });
@@ -222,9 +246,6 @@ Always provide clear, specific instructions to delegated agents.`;
     return decomposition;
   }
 
-  /**
-   * Discover available agents from registry
-   */
   private async discoverAgents(): Promise<void> {
     try {
       const response = await fetch(`${this.registryUrl}/agents`);
@@ -245,45 +266,22 @@ Always provide clear, specific instructions to delegated agents.`;
       }
     } catch (error) {
       console.warn('Failed to discover agents from registry:', error);
-
-      // Fall back to known default agents
-      this.setupDefaultAgents();
     }
   }
 
-  /**
-   * Set up connections to default agents
-   */
-  private setupDefaultAgents(): void {
-    const defaultAgents = [
-      { name: 'research-agent', url: 'http://localhost:3001', capabilities: ['research', 'web_search'] },
-      { name: 'code-agent', url: 'http://localhost:3002', capabilities: ['code_generation', 'programming'] },
-      { name: 'data-agent', url: 'http://localhost:3003', capabilities: ['data_processing', 'analysis'] },
-      { name: 'qa-agent', url: 'http://localhost:3004', capabilities: ['testing', 'validation'] },
-    ];
-
-    for (const agent of defaultAgents) {
-      if (!this.agentClients.has(agent.name)) {
-        const client = new A2AClient(agent.url);
-        this.agentClients.set(agent.name, client);
-      }
-    }
-  }
-
-  /**
-   * Assign subtasks to appropriate agents
-   */
   private async assignSubtasks(decomposition: TaskDecomposition): Promise<void> {
+
     for (const subtask of decomposition.subtasks) {
-      // Find best matching agent based on capabilities
+      // Find best matching agent based on skills (per A2A spec v0.3.0)
       let bestAgent: string | null = null;
       let bestScore = 0;
 
       for (const [agentName, entry] of this.knownAgents.entries()) {
-        const capabilities = entry.agentCard.capabilities;
-        const score = this.calculateCapabilityMatch(
-          subtask.requiredCapabilities,
-          capabilities
+        // Extract skill IDs from agent card (per A2A spec v0.3.0)
+        const skillIds = entry.agentCard.skills.map(skill => skill.id);
+        const score = this.calculateSkillMatch(
+          subtask.requiredSkills,
+          skillIds
         );
 
         if (score > bestScore) {
@@ -292,9 +290,9 @@ Always provide clear, specific instructions to delegated agents.`;
         }
       }
 
-      // Fall back to capability-based assignment if no registry
+      // Fall back to skill-based assignment if no registry
       if (!bestAgent) {
-        bestAgent = this.selectAgentByCapability(subtask.requiredCapabilities);
+        // bestAgent = this.selectAgentBySkill(subtask.requiredSkills);
       }
 
       if (bestAgent) {
@@ -307,10 +305,7 @@ Always provide clear, specific instructions to delegated agents.`;
     }
   }
 
-  /**
-   * Calculate capability match score
-   */
-  private calculateCapabilityMatch(required: string[], available: string[]): number {
+  private calculateSkillMatch(required: string[], available: string[]): number {
     let matches = 0;
     for (const req of required) {
       if (available.some(cap => cap.toLowerCase().includes(req.toLowerCase()))) {
@@ -320,34 +315,6 @@ Always provide clear, specific instructions to delegated agents.`;
     return matches / required.length;
   }
 
-  /**
-   * Select agent based on required capabilities
-   */
-  private selectAgentByCapability(capabilities: string[]): string {
-    const capabilityMap: Record<string, string> = {
-      'research': 'research-agent',
-      'web_search': 'research-agent',
-      'code_generation': 'code-agent',
-      'programming': 'code-agent',
-      'data_processing': 'data-agent',
-      'analysis': 'data-agent',
-      'testing': 'qa-agent',
-      'validation': 'qa-agent',
-      'general': 'research-agent', // Default fallback
-    };
-
-    for (const cap of capabilities) {
-      if (capabilityMap[cap]) {
-        return capabilityMap[cap];
-      }
-    }
-
-    return 'research-agent'; // Default
-  }
-
-  /**
-   * Execute subtasks with dependency management
-   */
   private async executeSubtasks(decomposition: TaskDecomposition): Promise<Map<string, any>> {
     const results = new Map<string, any>();
     const completed = new Set<string>();
@@ -425,9 +392,6 @@ Always provide clear, specific instructions to delegated agents.`;
     return results;
   }
 
-  /**
-   * Prepare context for a subtask from dependency results
-   */
   private prepareContext(subtask: any, results: Map<string, any>): any {
     const context: any = {};
 
@@ -441,9 +405,6 @@ Always provide clear, specific instructions to delegated agents.`;
     return context;
   }
 
-  /**
-   * Poll remote task until completion
-   */
   private async pollTaskCompletion(client: A2AClient, taskId: string, maxAttempts = 30): Promise<any> {
     for (let i = 0; i < maxAttempts; i++) {
       const task = await client.getTask(taskId);
@@ -465,9 +426,6 @@ Always provide clear, specific instructions to delegated agents.`;
     throw new Error('Task polling timeout');
   }
 
-  /**
-   * Extract result from A2A message (per specification)
-   */
   private extractResultFromMessage(message: A2AMessage): any {
     // Look for data parts first
     const dataPart = message.parts.find(p => p.kind === 'data');
@@ -484,9 +442,6 @@ Always provide clear, specific instructions to delegated agents.`;
     return null;
   }
 
-  /**
-   * Synthesize results from multiple agents
-   */
   private async synthesizeResults(decomposition: TaskDecomposition, results: Map<string, any>): Promise<string> {
     // In a real implementation, this would use Claude to synthesize
     // For now, we'll create a structured summary
@@ -513,16 +468,10 @@ Always provide clear, specific instructions to delegated agents.`;
     return synthesis;
   }
 
-  /**
-   * Get task decomposition for a specific task
-   */
   public getTaskDecomposition(taskId: string): TaskDecomposition | undefined {
     return this.taskDecompositions.get(taskId);
   }
 
-  /**
-   * Get list of known agents
-   */
   public getKnownAgents(): AgentRegistryEntry[] {
     return Array.from(this.knownAgents.values());
   }
@@ -536,12 +485,6 @@ async function main() {
     name: 'CoordinatorAgent',
     description: 'Orchestrates complex tasks across multiple specialized agents',
     port: 3000,
-    capabilities: [
-      'task-decomposition',
-      'agent-orchestration',
-      'multi-agent-coordination',
-      'result-synthesis'
-    ],
     version: '1.0.0',
     apiKey: process.env.ANTHROPIC_API_KEY,
     model: 'claude-sonnet-4',
@@ -551,7 +494,7 @@ async function main() {
   await coordinator.start();
 
   console.log('\n✅ Coordinator Agent is ready!');
-  console.log('   - Agent Card: http://localhost:3000/.well-known/agent.json');
+  console.log('   - Agent Card: http://localhost:3000/.well-known/agent-card.json');
   console.log('   - RPC Endpoint: http://localhost:3000/rpc');
   console.log('   - Registry URL: http://localhost:3100\n');
 

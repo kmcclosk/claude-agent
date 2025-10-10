@@ -3,26 +3,68 @@
  */
 
 /**
- * Agent Card - Describes agent capabilities and endpoints
+ * Agent Provider - Organization providing the agent (A2A spec v0.3.0 section 5.5)
+ */
+export interface A2AAgentProvider {
+  organization: string;
+  url?: string;
+}
+
+/**
+ * Agent Interface - Additional transport endpoints (A2A spec v0.3.0 section 5.5)
+ */
+export interface A2AAgentInterface {
+  url: string;
+  transport: string;  // e.g., "JSONRPC", "GRPC", "HTTP+JSON"
+}
+
+/**
+ * Agent Capabilities - Protocol feature flags (A2A spec v0.3.0 section 5.5)
+ */
+export interface A2AAgentCapabilities {
+  streaming?: boolean;
+  pushNotifications?: boolean;
+  stateTransitionHistory?: boolean;
+}
+
+/**
+ * Agent Skill - Specific capability the agent can perform (A2A spec v0.3.0 section 5.5)
+ */
+export interface A2AAgentSkill {
+  id: string;  // Required: unique skill identifier
+  name: string;  // Required: human-readable skill name
+  description: string;  // Required: what the skill does
+  inputModes: string[];  // Required: MIME types accepted (e.g., ["application/json", "text/plain"])
+  outputModes: string[];  // Required: MIME types produced (e.g., ["application/json", "image/png"])
+  examples?: any[];  // Optional: usage examples
+  security?: any[];  // Optional: skill-specific security requirements
+}
+
+/**
+ * Agent Card - Describes agent capabilities and endpoints (A2A spec v0.3.0 section 5.5)
  */
 export interface A2AAgentCard {
-  name: string;
-  description: string;
-  version: string;
-  capabilities: string[];
-  endpoints: {
-    base: string;
-    rpc: string;
-    card: string;
-    tasks: string;
-  };
-  authentication: {
-    type: 'none' | 'api-key' | 'oauth2';
-    required: boolean;
-  };
-  supportedContentTypes: string[];
-  maxConcurrentTasks: number;
-  metadata?: Record<string, any>;
+  // Required fields
+  protocolVersion: string;  // e.g., "0.3.0"
+  name: string;  // Human-readable agent name
+  description: string;  // Detailed explanation of agent's purpose
+  url: string;  // Primary endpoint URL
+  version: string;  // Agent version
+  capabilities: A2AAgentCapabilities;  // Protocol feature flags
+  defaultInputModes: string[];  // MIME types (e.g., ["application/json", "text/plain"])
+  defaultOutputModes: string[];  // MIME types (e.g., ["application/json", "image/png"])
+  skills: A2AAgentSkill[];  // Specific agent capabilities
+
+  // Optional fields
+  preferredTransport?: string;  // e.g., "JSONRPC"
+  additionalInterfaces?: A2AAgentInterface[];  // Multiple transport protocols
+  provider?: A2AAgentProvider;  // Organization details
+  iconUrl?: string;  // URL to agent icon
+  documentationUrl?: string;  // URL to documentation
+  securitySchemes?: Record<string, any>;  // Authentication methods
+  security?: any[];  // Security requirements
+  supportsAuthenticatedExtendedCard?: boolean;
+  signatures?: any[];  // Card integrity verification
 }
 
 /**
@@ -56,7 +98,7 @@ export interface A2APart {
  * A2A Message - Communication turn (per specification)
  */
 export interface A2AMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'agent' | 'system';  // Changed 'assistant' to 'agent' per spec
   parts: A2APart[];
   messageId: string;  // Added per specification
   timestamp?: string;  // Made optional
@@ -75,6 +117,7 @@ export interface A2ATaskStatus {
  * A2A Task - Stateful unit of work (per specification)
  */
 export interface A2ATask {
+  kind: 'task';  // Required per spec v0.3.0
   id: string;
   contextId: string;  // Added per specification for context management
   status: A2ATaskStatus;  // Changed to object per specification

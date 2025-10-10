@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { CoordinatorAgent } from './agents/coordinator.js';
-import { ResearchAgent } from './agents/specialists/research-agent.js';
+import { ResearchAgent } from './agents/research-agent.js';
 import { AgentRegistry, ServiceDiscoveryClient } from './server/registry.js';
-import { A2AClient } from './a2a/protocol.js';
-import { A2AMessage } from './a2a/types.js';
+import { A2AClient } from './a2a-protocol.js';
+import { A2AMessage } from './a2a-types.js';
 
 /**
  * Demo: Multi-Agent A2A System
@@ -182,7 +182,7 @@ async function waitForTaskCompletion(client: A2AClient, taskId: string): Promise
 
       // Display results
       const lastMessage = task.messages[task.messages.length - 1];
-      if (lastMessage && lastMessage.role === 'assistant') {
+      if (lastMessage && lastMessage.role === 'agent') {
         console.log('\n--- Response ---');
         const textParts = lastMessage.parts.filter(p => p.kind === 'text');
         textParts.forEach(part => {
